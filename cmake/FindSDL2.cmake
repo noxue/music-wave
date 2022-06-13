@@ -10,7 +10,7 @@ set(SDL2_PREFIX "${prefix}")
 set(SDL2_EXEC_PREFIX "${exec_prefix}")
 set(SDL2_LIBDIR "${libdir}")
 set(SDL2_INCLUDE_DIRS "${includedir}/SDL2")
-set(SDL2_LIBRARIES "-L${SDL2_LIBDIR}  -lmingw32 -lSDL2main -lSDL2 -mwindows")
+set(SDL2_LIBRARIES "-L${SDL2_LIBDIR}  -lmingw32 -lSDL2main -lSDL2")
 string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 
 if(NOT TARGET SDL2::SDL2)
