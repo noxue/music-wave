@@ -1,7 +1,7 @@
 # sdl2 cmake project-config input for ./configure scripts
 
 # 修改为自己 sdl2 所在路径，其他不变
-set(prefix "D:/libs/SDL2-2.0.22/x86_64-w64-mingw32") 
+set(prefix "${CMAKE_SOURCE_DIR}/libs/sdl2") 
 
 set(exec_prefix "${prefix}")
 set(libdir "${exec_prefix}/lib")

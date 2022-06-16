@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <iconv.h>
 
 #define LINE_MAX 1300
 #define LINE_HEIGHT 200
@@ -101,6 +102,30 @@ void *thread_func(void *arg)
     return NULL;
 }
 
+// utf-8 to gbk
+char *utf8_to_gbk(char *utf8)
+{
+    char *gbk = (char *)malloc(sizeof(char) * (strlen(utf8) * 2 + 1));
+    iconv_t cd = iconv_open("gbk", "utf-8");
+    if (cd == (iconv_t)-1)
+    {
+        printf("iconv_open error!\n");
+        return NULL;
+    }
+    memset(gbk, 0, sizeof(char) * (strlen(utf8) * 2 + 1));
+    char *inbuf = utf8;
+    char *outbuf = gbk;
+    size_t inlen = strlen(utf8);
+    size_t outlen = strlen(utf8) * 2 + 1;
+    if (iconv(cd, &inbuf, &inlen, &outbuf, &outlen) == (size_t)-1)
+    {
+        printf("iconv error!\n");
+        return NULL;
+    }
+    iconv_close(cd);
+    return gbk;
+}
+
 int main(int argc, char *argv[])
 {
     // 获取第一个参数
@@ -110,8 +135,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    filename = argv[1];
-    printf("%s\n", argv[1]);
+    // 解决中文文件名乱码
+    filename = utf8_to_gbk(argv[1]);
+
+    printf("%s\n", filename);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -198,5 +225,6 @@ int main(int argc, char *argv[])
 
     is_exit = true;
     SDL_Quit();
+    free(filename);
     return 0;
 }
