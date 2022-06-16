@@ -8,7 +8,7 @@
 #include <math.h>
 
 #define LINE_MAX 1300
-#define LINE_HEIGHT 250
+#define LINE_HEIGHT 200
 
 bool is_exit = false;
 char *filename = NULL;
