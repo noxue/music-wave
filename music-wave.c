@@ -7,11 +7,11 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define LINE_MAX 1500
-#define LINE_HEIGHT 300
+#define LINE_MAX 1300
+#define LINE_HEIGHT 250
 
 bool is_exit = false;
-
+char *filename = NULL;
 int dots_left[LINE_MAX] = {0};
 int dots_right[LINE_MAX] = {0};
 pthread_mutex_t dots_mutex;
@@ -31,14 +31,18 @@ void add(int *lines_array, int v)
 
 void data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount)
 {
-    if(frameCount==0)exit(0);
     ma_decoder *pDecoder = (ma_decoder *)pDevice->pUserData;
     if (pDecoder == NULL)
     {
         return;
     }
 
-    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+    ma_result result = ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+    if (result != MA_SUCCESS)
+    {
+        is_exit = true;
+        return;
+    }
     pthread_mutex_lock(&dots_mutex);
     for (int i = 0; i < frameCount; i++)
     {
@@ -57,14 +61,7 @@ void *thread_func(void *arg)
     ma_device_config deviceConfig;
     ma_device device;
 
-    /*
-    if (argc < 2)
-    {
-        printf("No input file.\n");
-        return -1;
-    }
-*/
-    result = ma_decoder_init_file("1.mp3", NULL, &decoder);
+    result = ma_decoder_init_file(filename, NULL, &decoder);
     if (result != MA_SUCCESS)
     {
         printf("Could not load file");
@@ -93,7 +90,6 @@ void *thread_func(void *arg)
         ma_decoder_uninit(&decoder);
         return NULL;
     }
-
     while (!is_exit)
     {
         SDL_Delay(10);
@@ -107,75 +103,100 @@ void *thread_func(void *arg)
 
 int main(int argc, char *argv[])
 {
-    if (SDL_Init(SDL_INIT_VIDEO) == 0)
+    // 获取第一个参数
+    if (argc < 2)
     {
-        SDL_Window *window = NULL;
-        SDL_Renderer *renderer = NULL;
+        printf("Usage: %s <filename>\n", argv[0]);
+        exit(1);
+    }
 
-        if (SDL_CreateWindowAndRenderer(1000, 800, SDL_WINDOW_RESIZABLE, &window, &renderer) == 0)
+    filename = argv[1];
+    printf("%s\n", argv[1]);
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
+        printf("SDL_Init Error: %s\n", SDL_GetError());
+        exit(1);
+    }
+
+    SDL_Window *window = SDL_CreateWindow("音乐波形图 - 不学网(noxue.com)", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, LINE_MAX, LINE_HEIGHT * 3.5, SDL_WINDOW_SHOWN);
+
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    // SDL_CreateWindowAndRenderer(LINE_MAX, LINE_HEIGHT * 3.5, SDL_WINDOW_RESIZABLE, &window, &renderer) == 0
+    if (window == NULL || renderer == NULL)
+    {
+        printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
+        exit(1);
+    }
+
+    SDL_bool done = SDL_FALSE;
+
+    // 多线程
+    pthread_t thread;
+    pthread_create(&thread, NULL, thread_func, NULL);
+
+    // 获取当前时间戳,用于限制帧数
+    uint32_t last_time = SDL_GetTicks();
+
+    while (!done)
+    {
+        // 一秒40帧
+        uint32_t current_time = SDL_GetTicks();
+        if (current_time - last_time < 1000 / 40)
         {
-            SDL_bool done = SDL_FALSE;
+            SDL_Delay(1000 / 40 - (current_time - last_time));
+        }
 
-            // 多线程
-            pthread_t thread;
-            pthread_create(&thread, NULL, thread_func, NULL);
+        last_time = current_time;
 
-            while (!done)
+        SDL_Event event;
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 30, SDL_ALPHA_OPAQUE);
+        SDL_RenderClear(renderer);
+
+        pthread_mutex_lock(&dots_mutex);
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
+        for (int i = 0; i < LINE_MAX; i++)
+        {
+            SDL_RenderDrawLine(renderer, i, LINE_HEIGHT + dots_left[i], i + 1, LINE_HEIGHT + dots_left[i + 1]);
+        }
+
+        SDL_SetRenderDrawColor(renderer, 255, 0, 255, SDL_ALPHA_OPAQUE);
+        for (int i = 0; i < LINE_MAX; i++)
+        {
+            SDL_RenderDrawLine(renderer, i, LINE_HEIGHT * 2.5 + dots_right[i], i + 1, LINE_HEIGHT * 2.5 + dots_right[i + 1]);
+        }
+
+        pthread_mutex_unlock(&dots_mutex);
+
+        SDL_RenderPresent(renderer);
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_QUIT)
             {
-                SDL_Event event;
-
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-                SDL_RenderClear(renderer);
-
-                SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
-                pthread_mutex_lock(&dots_mutex);
-
-                for (int i = 0; i < LINE_MAX; i++)
+                done = SDL_TRUE;
+            }
+            else if (event.type == SDL_KEYDOWN)
+            {
+                switch (event.key.keysym.sym)
                 {
-                    SDL_RenderDrawLine(renderer, i, LINE_HEIGHT + dots_left[i], i + 1, LINE_HEIGHT + dots_left[i + 1]);
-                }
-
-                SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
-                for (int i = 0; i < LINE_MAX; i++)
-                {
-                    SDL_RenderDrawLine(renderer, i, LINE_HEIGHT * 2 + dots_right[i], i + 1, LINE_HEIGHT * 2 + dots_right[i + 1]);
-                }
-
-                // for (int i = LINE_MAX; i < LINE_MAX * 2; i++)
-                // {
-                //
-                // }
-                pthread_mutex_unlock(&dots_mutex);
-
-                SDL_RenderPresent(renderer);
-                while (SDL_PollEvent(&event))
-                {
-                    if (event.type == SDL_QUIT)
-                    {
-                        done = SDL_TRUE;
-                    }
-                    else if (event.type == SDL_KEYDOWN)
-                    {
-                        switch (event.key.keysym.sym)
-                        {
-                        case SDLK_UP:
-
-                            break;
-                        }
-                    }
+                case SDLK_ESCAPE:
+                    done = SDL_TRUE;
                 }
             }
         }
-
-        if (renderer)
-        {
-            SDL_DestroyRenderer(renderer);
-        }
-        if (window)
-        {
-            SDL_DestroyWindow(window);
-        }
     }
+
+    if (renderer)
+    {
+        SDL_DestroyRenderer(renderer);
+    }
+    if (window)
+    {
+        SDL_DestroyWindow(window);
+    }
+
     is_exit = true;
     SDL_Quit();
     return 0;
