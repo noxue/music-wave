@@ -123,7 +123,6 @@ int main(int argc, char *argv[])
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    // SDL_CreateWindowAndRenderer(LINE_MAX, LINE_HEIGHT * 3.5, SDL_WINDOW_RESIZABLE, &window, &renderer) == 0
     if (window == NULL || renderer == NULL)
     {
         printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
