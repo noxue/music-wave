@@ -1,14 +1,11 @@
 cmake_minimum_required(VERSION 3.7)
 project(music-wave)
 
-#中文文件名乱码
-set(CMAKE_FILESYSTEM_CHARSET GB2312)
-
-set(LC_ALL "chinese")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLC_ALL=${LC_ALL}")
-
 # cmake 配置文件所在路径
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/" )
+
+# 程序图标
+set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
 
 # 会在上面配置的cmake路径中查找配置文件，FindSDL2.cmake
 find_package(SDL2 REQUIRED)
@@ -17,7 +14,8 @@ find_package(SDL2 REQUIRED)
 include_directories(. ${SDL2_INCLUDE_DIRS})  
 
 # 生成可执行文件
-add_executable(music-wave ${CMAKE_CURRENT_SOURCE_DIR}/music-wave.c)
+add_executable(music-wave ${CMAKE_CURRENT_SOURCE_DIR}/music-wave.c ${APP_ICON_RESOURCE_WINDOWS})
 
 # 链接 SDL2
-target_link_libraries(music-wave ${SDL2_LIBRARIES} -liconv)
+target_link_libraries(music-wave ${SDL2_LIBRARIES} -liconv -mwindows)
+
